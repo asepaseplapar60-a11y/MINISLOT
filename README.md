@@ -1,2 +1,346 @@
-# MINISLOT
-SLOTHV
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Mahjong Slot Fun</title>
+
+<style>
+html,body{
+margin:0;padding:0;width:100%;height:100%;
+overflow:hidden;font-family:Arial;
+background:radial-gradient(circle at center,#ff1a1a,#8b0000,#3b0000);
+color:white;text-align:center;
+}
+
+h1{font-size:40px;margin-top:10px;text-shadow:0 0 20px gold;}
+
+#loginBox{
+position:fixed;top:50%;left:50%;
+transform:translate(-50%,-50%);
+background:#111;padding:30px;
+border-radius:15px;box-shadow:0 0 20px gold;
+}
+
+input{
+padding:10px;margin:10px;
+border-radius:8px;border:none;width:200px;
+}
+
+#game{display:none;}
+
+#reels{
+display:flex;justify-content:center;
+margin-top:30px;gap:10px;
+}
+
+.reel{
+width:80px;height:200px;
+overflow:hidden;background:#111;
+border-radius:10px;position:relative;
+}
+
+.symbols{
+display:flex;flex-direction:column;
+position:absolute;top:0;width:100%;
+}
+
+.symbol{
+height:80px;width:100%;
+display:flex;align-items:center;justify-content:center;
+font-size:50px;background:#222;
+margin:1px 0;border-radius:8px;
+box-shadow:0 0 10px gold inset;
+}
+
+button{
+padding:10px 20px;margin:5px;
+font-size:16px;border:none;
+border-radius:10px;cursor:pointer;
+}
+
+#spinBtn{background:gold;}
+#buyBtn{background:limegreen;}
+#autoBtn{background:orange;}
+#logoutBtn{background:red;color:white;}
+
+#superWin{
+position:fixed;top:50%;left:50%;
+transform:translate(-50%,-50%);
+font-size:60px;color:yellow;
+text-shadow:0 0 30px white,0 0 60px gold;
+display:none;
+}
+
+/* ===== ANIMASI ===== */
+
+.shake{animation:shake 0.3s linear 4;}
+@keyframes shake{
+0%{transform:translate(0,0);}
+25%{transform:translate(5px,-5px);}
+50%{transform:translate(-5px,5px);}
+75%{transform:translate(5px,5px);}
+100%{transform:translate(0,0);}
+}
+
+.flashScreen{animation:flash 0.3s alternate 4;}
+@keyframes flash{
+0%{background-color:rgba(255,255,255,0);}
+50%{background-color:rgba(255,255,255,0.6);}
+100%{background-color:rgba(255,255,255,0);}
+}
+
+.firework{
+position:absolute;width:8px;height:8px;
+border-radius:50%;animation:explode 1s linear;
+}
+@keyframes explode{
+0%{transform:scale(1);opacity:1;}
+100%{transform:scale(8);opacity:0;}
+}
+
+.coinDrop{
+position:absolute;font-size:30px;
+animation:fall 1.2s linear forwards;
+}
+@keyframes fall{
+0%{top:-50px;opacity:1;}
+100%{top:95%;opacity:0;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginBox">
+<h2>🔐 LOGIN GAME</h2>
+<input type="text" id="username" placeholder="Masukkan Nama"><br>
+<input type="password" id="password" placeholder="Masukkan Sandi"><br>
+<button onclick="login()">MASUK</button>
+</div>
+
+<div id="game">
+<h1>🐉CASINO MINI🐉</h1>
+<h3>👤 <span id="playerName"></span></h3>
+<h3>💵 SALDO: Rp <span id="money"></span> | 🪙 Coin: <span id="coin"></span></h3>
+
+<div id="reels">
+<div class="reel" id="r1"><div class="symbols"></div></div>
+<div class="reel" id="r2"><div class="symbols"></div></div>
+<div class="reel" id="r3"><div class="symbols"></div></div>
+</div>
+
+<button id="spinBtn">🎰 SPIN (5 Coin)</button>
+<button id="buyBtn">🪙 BELI COIN</button>
+<button onclick="addMoney()">💰 DEPOSIT</button>
+<button id="autoBtn">⏯ AUTO SPIN OFF</button>
+<button id="logoutBtn" onclick="logout()">🚪 LOGOUT</button>
+
+<div id="superWin">🔥 SUPER WIN 🔥</div>
+
+<audio id="spinSound" src="https://www.soundjay.com/casino/slot-machine-01.mp3"></audio>
+<audio id="winSound" src="https://www.soundjay.com/casino/win-01.mp3"></audio>
+<audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+</div>
+
+<script>
+
+let money=100000;
+let coin=50;
+let autoSpin=false;
+let autoInterval;
+let firstClick=false;
+
+const symbolsArr=["🀄","💎","7️⃣","🍀","⭐"];
+const reels=[
+document.querySelector("#r1 .symbols"),
+document.querySelector("#r2 .symbols"),
+document.querySelector("#r3 .symbols")
+];
+
+function saveData(){
+localStorage.setItem("miniSlotMoney",money);
+localStorage.setItem("miniSlotCoin",coin);
+}
+
+function loadData(){
+let savedMoney=localStorage.getItem("miniSlotMoney");
+let savedCoin=localStorage.getItem("miniSlotCoin");
+if(savedMoney!==null) money=parseInt(savedMoney);
+if(savedCoin!==null) coin=parseInt(savedCoin);
+}
+
+function login(){
+let user=document.getElementById("username").value;
+let pass=document.getElementById("password").value;
+
+if(user.length<3 || pass.length<3){
+alert("Minimal 3 karakter!");
+return;
+}
+
+localStorage.setItem("miniSlotUser",user);
+loadData();
+updateUI();
+
+document.getElementById("loginBox").style.display="none";
+document.getElementById("game").style.display="block";
+document.getElementById("playerName").innerText=user;
+}
+
+function logout(){
+localStorage.removeItem("miniSlotUser");
+location.reload();
+}
+
+window.onload=function(){
+let savedUser=localStorage.getItem("miniSlotUser");
+if(savedUser){
+loadData();
+updateUI();
+document.getElementById("loginBox").style.display="none";
+document.getElementById("game").style.display="block";
+document.getElementById("playerName").innerText=savedUser;
+}
+}
+
+function updateUI(){
+document.getElementById("money").innerText=money;
+document.getElementById("coin").innerText=coin;
+saveData();
+}
+
+function addMoney(){
+let jumlah=parseInt(prompt("Masukkan jumlah saldo yang ingin ditambahkan:"));
+if(!jumlah || jumlah<=0){
+alert("Jumlah tidak valid!");
+return;
+}
+money+=jumlah;
+updateUI();
+alert("Saldo berhasil ditambahkan 😹");
+}
+
+function buyCoin(){
+let jumlah=parseInt(prompt("1 coin = 100 uang game\nMasukkan jumlah coin:"));
+if(!jumlah || jumlah<=0)return;
+let harga=jumlah*100;
+if(money<harga){alert("Uang kurang!");return;}
+money-=harga;
+coin+=jumlah;
+updateUI();
+}
+
+function spin(){
+if(!firstClick){
+document.getElementById("bgMusic").play();
+firstClick=true;
+}
+
+if(coin<5){alert("Coin kurang!");return;}
+
+coin-=5;
+updateUI();
+
+document.getElementById("spinSound").play();
+
+reels.forEach(r=>{
+r.innerHTML="";
+for(let i=0;i<15;i++){
+let s=document.createElement("div");
+s.className="symbol";
+s.innerText=symbolsArr[Math.floor(Math.random()*symbolsArr.length)];
+r.appendChild(s);
+}
+r.style.top="0px";
+animateReel(r);
+});
+
+setTimeout(giveResult,800);
+}
+
+function animateReel(reel){
+let pos=0;
+let interval=setInterval(()=>{
+pos-=25;
+if(pos<-reel.scrollHeight/2){
+clearInterval(interval);
+}
+reel.style.top=pos+"px";
+},25);
+}
+
+function giveResult(){
+let chance=Math.random()*100;
+if(chance<3){
+coin+=100;
+money+=3000;
+superWin();
+}
+updateUI();
+}
+
+function superWin(){
+document.getElementById("winSound").play();
+
+let text=document.getElementById("superWin");
+text.style.display="block";
+text.style.transform="translate(-50%,-50%) scale(1.8)";
+
+document.body.classList.add("shake");
+document.body.classList.add("flashScreen");
+
+fireworks(60);
+coinRain(40);
+
+setTimeout(()=>{
+text.style.display="none";
+document.body.classList.remove("shake");
+document.body.classList.remove("flashScreen");
+},3000);
+}
+
+function fireworks(count){
+for(let i=0;i<count;i++){
+let f=document.createElement("div");
+f.className="firework";
+f.style.left=Math.random()*100+"%";
+f.style.top=Math.random()*100+"%";
+f.style.backgroundColor=`hsl(${Math.random()*360},100%,50%)`;
+document.body.appendChild(f);
+setTimeout(()=>f.remove(),1000);
+}
+}
+
+function coinRain(count){
+for(let i=0;i<count;i++){
+let c=document.createElement("div");
+c.className="coinDrop";
+c.style.left=Math.random()*95+"%";
+c.innerText="🪙";
+document.body.appendChild(c);
+setTimeout(()=>c.remove(),1200);
+}
+}
+
+function toggleAuto(){
+autoSpin=!autoSpin;
+document.getElementById("autoBtn").innerText=
+autoSpin?"⏯ AUTO SPIN ON":"⏯ AUTO SPIN OFF";
+
+if(autoSpin){
+autoInterval=setInterval(()=>{if(coin>=5)spin();},1000);
+}else{
+clearInterval(autoInterval);
+}
+}
+
+document.getElementById("spinBtn").addEventListener("click",spin);
+document.getElementById("buyBtn").addEventListener("click",buyCoin);
+document.getElementById("autoBtn").addEventListener("click",toggleAuto);
+
+updateUI();
+
+</script>
+</body>
+</html>
