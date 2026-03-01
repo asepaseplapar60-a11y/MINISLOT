@@ -1,0 +1,2 @@
+# MINISLOT
+SLOTHV
